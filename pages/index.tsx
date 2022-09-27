@@ -1,84 +1,176 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import Image from 'next/image'
+import { useState, useEffect } from 'react'
+import { NFTCard } from '../components/NFTCard'
 
 const Home: NextPage = () => {
+  const [walletAddress, setWalletAddress] = useState("")
+  const [collectionAddress, setCollectionAddress] = useState("")
+  const [NFTs, setNFTs] = useState([])
+  const [fetchForCollection, setFetchForCollection] = useState(false)
+  const [pageKey, setPageKey] = useState("")
+
+  const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+
+  const fetchNFTs = async () => {
+    let nfts
+    const baseURL = `https://eth-mainnet.g.alchemy.com/nft/v2/${ALCHEMY_API_KEY}/getNFTs`
+    var requestOptions = {
+      method: "GET"
+    }
+
+    if (!collectionAddress.length) {
+      console.log("Fetching NFTs owned by address...")
+      const fetchURL = `${baseURL}?owner=${walletAddress}`
+      nfts = await fetch(fetchURL, requestOptions).then(data => data.json())
+    } else {
+      console.log("Fetching NFTs for collection owned by address...")
+      const fetchURL = `${baseURL}?owner=${walletAddress}&contractAddresses%5B%5D=${collectionAddress}`
+      nfts = await fetch(fetchURL, requestOptions).then(data => data.json())
+    }
+
+    if (nfts) {
+      console.log(nfts)
+      setNFTs(nfts.ownedNfts)
+      if (nfts.pageKey) {
+        console.log("Page key: ", nfts.pageKey)
+        setPageKey(nfts.pageKey)
+      }
+      else {
+        console.log("No page key")
+        setPageKey("")
+      }
+    }
+  }
+
+  const fetchNFTsForCollection = async () => {
+    if (collectionAddress.length) {
+      const baseURL = `https://eth-mainnet.g.alchemy.com/nft/v2/${ALCHEMY_API_KEY}/getNFTsForCollection`
+      const fetchURL = `${baseURL}?contractAddress=${collectionAddress}&withMetadata=true`
+      var requestOptions = {
+        method: "GET"
+      }
+      const nfts = await fetch(fetchURL, requestOptions).then(data => data.json())
+
+      if (nfts) {
+        console.log("NFTs in collection:", nfts)
+        setNFTs(nfts.nfts)
+        if (nfts.nextToken) {
+          console.log("Next token: ", parseInt(nfts.nextToken, 16))
+          setPageKey(nfts.nextToken)
+        }
+        else {
+          console.log("No next token")
+          setPageKey("")
+        }
+      }
+    }
+  }
+
+  const fetchMoreNFTs = async () => {
+    const requestOptions = {
+      method: "GET"
+    }
+    let baseURL, fetchURL, nfts
+
+    if (fetchForCollection) {
+      baseURL = `https://eth-mainnet.g.alchemy.com/nft/v2/${ALCHEMY_API_KEY}/getNFTsForCollection`
+      fetchURL = `${baseURL}?contractAddress=${collectionAddress}&withMetadata=true&startToken=${pageKey}`
+      nfts = await fetch(fetchURL, requestOptions).then(data => data.json())
+
+      if (nfts) {
+        console.log("New NFTs in collection:", nfts)
+        setNFTs(prev => [...prev, ...nfts.nfts])
+        if (nfts.nextToken.length > 0) {
+          console.log("Next token: ", parseInt(nfts.nextToken, 16))
+          setPageKey(nfts.nextToken)
+        }
+        else {
+          console.log("No next token")
+          setPageKey("")
+        }
+      }
+    }
+    else {
+      baseURL = `https://eth-mainnet.g.alchemy.com/nft/v2/${ALCHEMY_API_KEY}/getNFTs`
+
+      if (!collectionAddress.length) {
+        console.log("Fetching new NFTs owned by address...")
+        const fetchURL = `${baseURL}?owner=${walletAddress}&pageKey=${pageKey}`
+        nfts = await fetch(fetchURL, requestOptions).then(data => data.json())
+      } else {
+        console.log("Fetching new NFTs for collection owned by address...")
+        const fetchURL = `${baseURL}?owner=${walletAddress}&contractAddresses%5B%5D=${collectionAddress}&pageKey=${pageKey}`
+        nfts = await fetch(fetchURL, requestOptions).then(data => data.json())
+      }
+
+      if (nfts) {
+        console.log(nfts)
+        setNFTs(prev => [...prev, ...nfts.ownedNfts])
+        if (nfts.pageKey.length > 0) {
+          console.log("Page key: ", nfts.pageKey)
+          setPageKey(nfts.pageKey)
+        }
+        else {
+          console.log("No page key")
+          setPageKey("")
+        }
+      }
+    }
+  }
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-2">
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className="flex w-full flex-1 flex-col items-center justify-center px-20 text-center">
-        <h1 className="text-6xl font-bold">
-          Welcome to{' '}
-          <a className="text-blue-600" href="https://nextjs.org">
-            Next.js!
-          </a>
-        </h1>
-
-        <p className="mt-3 text-2xl">
-          Get started by editing{' '}
-          <code className="rounded-md bg-gray-100 p-3 font-mono text-lg">
-            pages/index.tsx
-          </code>
-        </p>
-
-        <div className="mt-6 flex max-w-4xl flex-wrap items-center justify-around sm:w-full">
-          <a
-            href="https://nextjs.org/docs"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Documentation &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Find in-depth information about Next.js features and its API.
-            </p>
-          </a>
-
-          <a
-            href="https://nextjs.org/learn"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Learn &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Learn about Next.js in an interactive course with quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Examples &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Discover and deploy boilerplate example Next.js projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="mt-6 w-96 rounded-xl border p-6 text-left hover:text-blue-600 focus:text-blue-600"
-          >
-            <h3 className="text-2xl font-bold">Deploy &rarr;</h3>
-            <p className="mt-4 text-xl">
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className="flex h-24 w-full items-center justify-center border-t">
-        <a
-          className="flex items-center justify-center gap-2"
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+    <div className="flex min-h-screen flex-col items-center justify-center py-8 gap-y-3">
+      <div className="flex flex-col w-full items-center justify-center gap-y-2">
+        <input
+          className="w-2/5 bg-slate-100 py-2 px-2 rounded-lg text-gray-800 focus:outline-blue-300 disabled:bg-slate-50"
+          onChange={(e) => { setWalletAddress(e.target.value) }}
+          value={walletAddress} type="text"
+          disabled={fetchForCollection}
+          placeholder="Input wallet address here" />
+        <input
+          className="w-2/5 bg-slate-100 py-2 px-2 rounded-lg text-gray-800 focus:outline-blue-300 disabled:bg-slate-50"
+          onChange={(e) => { setCollectionAddress(e.target.value) }}
+          value={collectionAddress} type="text"
+          placeholder="Input collection address here" />
+        <label className='text-gray-600'>
+          <input
+            className='mr-2'
+            type="checkbox"
+            onChange={(e) => { setFetchForCollection(e.target.checked) }}
+          />
+          Fetch for collection
+        </label>
+        <button
+          className="disabled:bg-slate-500 text-white rounded-md px-6 py-2 bg-blue-400"
+          onClick={() => { fetchForCollection ? fetchNFTsForCollection() : fetchNFTs() }}
         >
-          Powered by{' '}
-          <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-        </a>
-      </footer>
+          Let's go
+        </button>
+      </div>
+      <div className="relative flex py-5 items-center w-5/6">
+        <div className="flex-grow border-t-2 border-gray-600"></div>
+        <span className="flex-shrink mx-4 text-gray-600 font-semibold">NFT Gallery</span>
+        <div className="flex-grow border-t-2 border-gray-600"></div>
+      </div>
+      <div className="flex flex-wrap gap-y-12 mt-4 w-5/6 gap-x-2 justify-center">
+        {NFTs.length
+          ? NFTs.map((nft, index) => {
+            return (
+              <NFTCard nft={nft}
+                key={index}
+              />
+            )
+          })
+          : "Nothing to show..."
+        }
+      </div>
+      {pageKey &&
+        <button onClick={() => fetchMoreNFTs()}>
+          Load more...
+        </button>
+      }
     </div>
   )
 }
