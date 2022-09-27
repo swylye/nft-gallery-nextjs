@@ -1,4 +1,4 @@
-export const NFTCard = ({ nft }) => {
+export const NFTCard = ({ nft: any }) => {
     return (
         <div className="w-1/4 flex flex-col">
             <div className="max-w-xs rounded-md">
