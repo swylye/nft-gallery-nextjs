@@ -1,10 +1,9 @@
-import type { NextPage } from 'next'
 import Head from 'next/head'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { NFTCard } from '../components/NFTCard'
 
-const Home: NextPage = () => {
+const Home = () => {
   const [walletAddress, setWalletAddress] = useState("")
   const [collectionAddress, setCollectionAddress] = useState("")
   const [NFTs, setNFTs] = useState([])
